@@ -69,7 +69,12 @@ func main() {
 			dialog.FatalError(err.Error())
 			os.Exit(1)
 		}
-		response, err := http.Get("http://" + up.Host + "/sorgu?process=" + process)
+		hostname, err := ofisclient.Hostname()
+		if err != nil {
+			dialog.FatalError(err.Error())
+			os.Exit(1)
+		}
+		response, err := http.Get("http://" + up.Host + "/sorgu?process=" + url.QueryEscape(process) + "&hostname=" + url.QueryEscape(hostname))
 		if err != nil {
 			dialog.FatalError(err.Error())
 			os.Exit(1)
@@ -98,7 +103,7 @@ func main() {
 		}
 		var cmd *exec.Cmd
 		if runtime.GOOS == "windows" {
-			cmdlist := []string{"/C", "start", *runapp}
+			cmdlist := []string{"/C", "/Q", "start", *runapp}
 			cmdlist = append(cmdlist, flag.Args()...)
 			cmd = exec.Command("cmd.exe", cmdlist...)
 		} else {

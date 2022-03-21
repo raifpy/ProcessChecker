@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"server/src/websocket"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
@@ -33,13 +34,20 @@ func (o *Ofis) Router() error {
 
 	o.Engine.Get("/sorgu", func(c *fiber.Ctx) error {
 		processname := c.Query("process")
+		//bildir := c.Query("bildir") == "true"
+		hostname := c.Query("hostname")
+
+		if /*bildir && */ hostname == "" {
+			return errors.New("hostname cannot be empty")
+		}
+
 		sorgulist := []websocket.Sorgu{}
 		for _, l := range o.Ws.WriteAll(websocket.ClientRequest{
 			Message: websocket.RequestMessageProcessCheck{
 				ProcessName: processname,
 			}}) {
 
-			oneymis := l.Message.(websocket.ClientParsedResponse)
+			oneymis := l.Message.(websocket.ClientParsedResponse) // ?
 			fmt.Printf("oneymis: %v\n", oneymis)
 
 			fmt.Printf("l.Message: %v\n", l.Message)
@@ -53,7 +61,27 @@ func (o *Ofis) Router() error {
 				Process:  cast.ToBool(oneymis.Message),
 				Error:    cast.ToString(l.Error),
 			})
+
+			if cast.ToBool(oneymis.Message) {
+				go func() {
+					if conn, ok := o.Ws.Clients.Get(l.Id); ok {
+						conn.Write(websocket.ClientRequest{
+							MessageID: "system:info",
+							Message:   fmt.Sprintf("%s tarafından erişim talep edildi.", strings.Title(hostname)),
+						})
+					}
+				}()
+			}
 		}
+
+		/*o.Ws.Clients.Range(func(c websocket.Client) {
+			if c.Id != hostname {
+				c.Write(websocket.ClientRequest{
+					MessageID: "system:info",
+					Message:   fmt.Sprintf("%s tarafından erişim talep edildi", hostname),
+				})
+			}
+		})*/
 
 		return c.JSON(sorgulist)
 

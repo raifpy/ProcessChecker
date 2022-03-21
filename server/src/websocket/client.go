@@ -39,6 +39,15 @@ func (w *WsClients) Set(c Client) error {
 	return nil
 }
 
+func (w *WsClients) Range(fn func(Client)) {
+	w.mutex.RLock()
+	for _, c := range w.clientmaps {
+		go fn(c)
+	}
+	w.mutex.RUnlock()
+
+}
+
 func (w *WsClients) Get(id string) (Client, bool) {
 	w.mutex.RLock()
 	defer w.mutex.RUnlock()
